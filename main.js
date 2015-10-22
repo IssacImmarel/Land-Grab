@@ -1048,7 +1048,7 @@ function tutorialMessage(message, highlightedID, previousID, tutNum)
 	}
 	if(tutNum == 3)
 	{
-		document.getElementById('tutorial-block').style.top="12vh";
+		document.getElementById('tutorial-block').style.top="13vh";
 		document.getElementById('tutorial-block').style.left="35vw";
 	}
 	if(tutNum == 4)
