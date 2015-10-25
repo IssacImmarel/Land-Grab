@@ -2,19 +2,311 @@ html {
     font-family: sans-serif;
     -webkit-text-size-adjust: 100%;
     -ms-text-size-adjust: 100%;
+	font-size: 1.6vh; /* ~ 16px on my test monitor */
 }
 
 body {
-	width: 99vw;
-	margin: 0 0 0 .5vw;
+    background-color: rgb(125,120,125);
+	width: 100vw;
+	margin: 0px;
+	z-index: 0;
+	overflow: auto;
 }
 
 h1 {
-	width: 22.5vw;
+    background-color: rgb(165,165,205);
+    color: rgb(255,0,0); 
+	opacity: .5;
 	position: relative;
+	width: 22.5vw;
 	margin: 1vh auto 0px;
+	border: 12px ridge cyan;
+    padding: 2px;
+	z-index: 4;
+	text-align: center;
 }
 
-#gameBlock {
-	
+#game-block {
+    background-color: rgb(150,150,190);
+	display: block;
+	width: 95vw;
+	margin: calc(1.5vh - 9px) 0px 0px calc(2.5vw - 9px);
+	border: 4px ridge white;
+	padding: 5px;
 }
+
+#resource-table {
+    display: -webkit-flex;
+    display: flex;
+	position: relative; /* Allows the use of z-index for tutorial*/
+    justify-content: center;
+    width: 100%;
+    max-width: 100%;
+	margin: 0px 0px 5px 0px;
+}
+
+.resourceBlock {
+    background-color: rgb(125,125,165);
+    color: white;
+    display: inline-block;
+    text-align: center;
+    width:25%;
+    max-width:25%;
+    height: 1.25em;
+    padding: 1px 0px; 
+    border: 1px solid;
+    margin: 0px 0px 2px 0px;
+}
+
+#game-map-block {
+    background-color: rgb(165,125,125);
+    color: white;
+    display: -webkit-flex;
+    display: flex;
+	width: calc(100% - 6px);
+    height: calc(57vh + 32px);
+    padding: 2px;
+    border: 1px solid white;
+}
+
+.tableScroller {
+	width: 55%;
+    height: calc(57vh + 32px);
+	overflow: auto;
+	border: 0px;
+	padding: 0px;
+	margin: 0px;
+}
+
+table {
+    width: 100%;
+	border-spacing: 0px;
+}
+tbody {
+	width: 100%;
+	height: 57vh;
+	overflow: auto;
+}
+
+td {
+    background-color: rgb(80,80,255); /*Never seen but I like the color so I'm leaving it here*/
+	color: black;
+	text-align: center;
+    width: 10%;
+    height: 5.7vh;
+	border: 1px solid white;
+    border-collapse: collapse;
+	cursor: pointer;
+	visibility: hidden;
+}
+
+.menu {
+	display: block;
+	width: 45%;
+}
+
+.buttonBlock {
+	display: -webkit-flex;
+	display: flex;
+	position: relative; /* Allows the use of z-index on the buttonBlock*/
+	width: 100%;
+	margin: 2px 0px;
+	justify-content: space-around; /* Distributes the contents evenly*/
+} 
+
+.buttonHolder {
+	display: inline-block;
+	width: 25%;
+}
+
+.button, .costBox {
+	color: black;
+	display: block;
+	float: right;
+	width: 95%;
+	padding: 1px;
+	border: 1px solid white;
+	margin: 5px 0px 0px;
+	cursor: pointer;
+	font-size: 1em;
+	text-align: center;
+}
+
+.costBox {
+	border-top: 0px;
+	margin: 0px;
+	cursor: default;
+}
+
+#buy-yard, #buy-yard-cost {
+	background-color: forestgreen;
+}
+
+#buy-quarry, #buy-quarry-cost, #upgrade-quarry, #upgrade-quarry-cost {
+	background-color: purple;
+}
+#buy-mine, #buy-mine-cost, #upgrade-mine, #upgrade-mine-cost {
+	background-color: slategray;
+}
+#buy-lumber-mill, #buy-mill-cost, #upgrade-lumber-mill, #upgrade-mill-cost {
+	background-color: saddlebrown;
+}
+#buy-farm, #buy-farm-cost, #upgrade-farm, #upgrade-farm-cost {
+	background-color: #FFFF33;
+	border-color: black;
+}
+#buy-recruit, #buy-recruit-cost {
+	background-color: black;
+	color: white;
+}
+#buy-knight, #buy-knight-cost {
+	background-color: maroon;
+	color: white;
+}
+#buy-archer, #buy-archer-cost {
+	background-color: forestgreen;
+	color: white;
+}
+#buy-mage, #buy-mage-cost {
+	background-color: darkturquoise;
+	color: white;
+}
+
+#battle-block {
+	background-color: rgb(165,125,125);
+	/*background-image: linear-gradient(to left, lightblue, lightblue 50%,darkblue 75%, black);*/
+	display: flex;
+	justify-content: space-around;
+	height: 20.43vh;
+	border: 0px solid black;
+	margin: 5px 0px;
+}
+
+.cardBlock{
+	width: 25%;
+	height: 100%;
+	padding: 0px;
+	margin: 0px;
+}
+
+.cardHeadingList {
+	padding: 0px;
+	margin: 0px;
+	width: 100%;
+	position: relative; /* Potentially use Z-index to expaland active unit name in player list*/
+	z-index: 0;
+}
+
+.cardHeading {
+	background-color: dodgerblue;
+	display: inline-block;
+	float: left;
+	width: calc(33% - 2px);
+	height: calc(25% - 2px);
+	border: 1px solid white;
+	border-radius: 5px 5px 0 0;
+	margin: 0;
+	cursor: pointer;
+	white-space: nowrap;
+	overflow: hidden;
+	text-align: center;
+}
+
+#player-card-1, #enemy-card-1 {
+	border-bottom: 0px;
+	padding-bottom: 1px;
+}
+
+#player-unit, #enemy-unit, #battle-button, #move-button, #battle-button-group, #merge-button, #sort-button {
+	visibility: visible;
+}
+
+#player-unit, #enemy-unit {
+	background-color: dodgerblue;
+	display: inline-block;
+	width: calc(99% - 2px);
+	height: calc(90% - 6px);
+	border: 1px solid white;
+	border-top: 0px;
+	padding: 0px 0px 5px 0px;
+}
+
+#battle-button, #move-button, #merge-button, #sort-button {
+	background-color: black;
+	color: white;
+	display: inline-block;
+	position: relative;
+	top: 0px;
+	width: calc(100% - 2px);
+    height: calc((25% - 2px) - (((25% - 2px) - 1em) / 2));
+	border: 1px solid white;
+	text-align: center;
+	font-size: 1em;
+	padding-top: calc(((25% - 2px) - 1em) / 2);
+	cursor: pointer;
+} 
+
+.enemy, #enemy-unit{
+	background-color: crimson;
+}
+
+#tutorial-block {
+    width: 30vw;
+	height: fit-content;
+    position: fixed;
+    background: lightgrey;
+    display: none;
+    padding: 10px;
+    border: 2px solid blue;
+	z-index: 3;
+	left: 35vw;
+	top: 26vh;
+}
+
+#tutorial-button {
+	width: 10vw;
+	height: calc(5vh - ((5vh - 16px) / 2));
+	border: 1px solid white;
+	background-color: black;
+	color: white;
+	position: relative;
+	float: right;
+	z-index:4;
+	text-align: center;
+	padding-top: calc((5vh - 16px) / 2);
+}
+
+#tutorial-text {
+	display: block;
+	background-color: dodgerblue;
+	color: black;
+	height: fit-content;
+	min-height: 20vh;
+	width: 28vw;
+	position: relative;
+	z-index:4;
+	margin: 16px auto;
+	text-align: center;
+	font-size: 1.6em
+}
+
+p {
+	margin: 2px 0px;
+}
+
+#mask {
+	width: 99vw;
+	height: 101vh;
+	position: absolute;
+	left: 0px;
+	top: 0px;
+	background-color: black;
+	opacity: .9;
+	display: none;
+	z-index: 1;
+}
+
+
+
+
+
