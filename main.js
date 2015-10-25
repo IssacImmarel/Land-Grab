@@ -3,46 +3,16 @@ var selectedSpace = "0";
 var mapArray = [];
 var map;
 
-var haveAFarm = false;
-var haveAMill = false;
-var haveAQuarry = false;
-var haveAMine = false;
-
-var farmGoldCost = 0;
-var farmLumberCost = 20;
-var farmStoneCost = 15;
-var LumberMillGoldCost = 0;
-var LumberMillStoneCost = 25;
-var LumberMillLumberCost = 25;
-var QuarryGoldCost = 0;
-var QuarryStoneCost = 25;
-var QuarryLumberCost = 25;
-var MineGoldCost = 10;
-var MineLumberCost = 30;
-var MineStoneCost = 15;
-
-var farmGoldUpgrade = 0;
-var farmLumberUpgrade = 0;
-var farmStoneUpgrade = 0;
-var LumberMillGoldUpgrade = 0;
-var LumberMillStoneUpgrade = 0;
-var LumberMillLumberUpgrade = 0;
-var QuarryGoldUpgrade = 0;
-var QuarryStoneUpgrade = 0;
-var QuarryLumberUpgrade = 0;
-var MineGoldUpgrade = 0;
-var MineLumberUpgrade = 0;
-var MineStoneUpgrade = 0;
-
 var newSpace = 0;
 var moving = false;
+var merging = false;
 var battleTimeCount = 0;
 var battling = false;
-var playerFighter = {};
-var enemyFighter = {};
+
+//var playerFighting;
+//var enemyFighting;
 var intervalDivisor = 1;
 var intervalVariable = 0;
-var difficultyMod = .8;
 var selectedId;
 
 var tutCont = true;
@@ -51,7 +21,7 @@ var tutCont = true;
 /** 
 OBJECT PROTOTYPES
 */
-function resources(lum, sto, gold, totFood, useFood, exp, knightExp, archerExp, mageExp)
+function resources(lum, sto, gold, totFood, useFood, exp, knightExp, archerExp, mageExp, difMod)
 {
 	this.Lumber = lum;
 	this.Stone = sto;
@@ -62,10 +32,55 @@ function resources(lum, sto, gold, totFood, useFood, exp, knightExp, archerExp, 
 	this.KnightExp = knightExp;
 	this.ArcherExp = archerExp;
 	this.MageExp = mageExp;
+	this.difficultyMod = difMod;
 	
 	this.lumberIncrementer = 0;
 	this.stoneIncrementer = 0;
 	this.goldIncrementer = 0;
+	
+	this.farmGoldCost = 0;
+	this.farmLumberCost = 20;
+	this.farmStoneCost = 15;
+	this.LumberMillGoldCost = 0;
+	this.LumberMillStoneCost = 25;
+	this.LumberMillLumberCost = 25;
+	this.QuarryGoldCost = 0;
+	this.QuarryStoneCost = 25;
+	this.QuarryLumberCost = 25;
+	this.MineGoldCost = 10;
+	this.MineLumberCost = 30;
+	this.MineStoneCost = 15;
+	this.YardGoldCost = 20;
+	this.YardLumberCost = 60;
+	this.YardStoneCost = 60;
+
+	this.farmGoldUpgrade = 10;
+	this.farmLumberUpgrade = 30;
+	this.farmStoneUpgrade = 30;
+	this.LumberMillGoldUpgrade = 10;
+	this.LumberMillStoneUpgrade = 30;
+	this.LumberMillLumberUpgrade = 30;
+	this.QuarryGoldUpgrade = 10;
+	this.QuarryStoneUpgrade = 30;
+	this.QuarryLumberUpgrade = 30;
+	this.MineGoldUpgrade = 10;
+	this.MineLumberUpgrade = 30;
+	this.MineStoneUpgrade = 30;
+	
+	this.UnitLumberCost = 0;
+	this.UnitStoneCost = 0;
+	this.UnitGoldCost = 0;
+	
+	this.UnitLumberUpgrade = 0;
+	this.UnitStoneUpgrade = 0;
+	this.UnitGoldUpgrade = 0;
+	this.UnitExpCost = 0;
+	
+	this.haveAFarm = false;
+	this.haveAMill = false;
+	this.haveAQuarry = false;
+	this.haveAMine = false;
+	this.haveAYard = false;
 	
 	this.lumberMax = 100;
 	this.stoneMax = 100;
@@ -74,56 +89,94 @@ function resources(lum, sto, gold, totFood, useFood, exp, knightExp, archerExp, 
 	this.lumberLevel = 0;
 	this.stoneLevel = 0;
 	this.goldLevel = 0;
+	
+	this.Group = new unitGroup();
 }
 
-function unit(owner, cell)
+function unitGroup()
+{
+	this.selectedFighter = {};
+	this.battlingFighter = {};
+	this.selectedFighterGroup = [];
+	this.battlingFighterGroup = [];
+}
+
+function unit(owner, cell, who)
 {
 	this.isEnemy = owner;
 	this.type = "recruit";
 	this.name = "";
+	this.currentKnight = "";
+	this.currentArcher = "";
+	this.currentMage = "";
 	
-	this.defense = 20;
-	this.health = 100;
-	this.totalHealth = 100;
-	this.attack = 40;
-	this.speed = 5;
+	this.knightlvl = 0;
+	this.archerlvl = 0;
+	this.magelvl = 0;
+	
+	this.defense = 0;
+	this.health = 0;
+	this.totalHealth = 0;
+	this.attack = 0;
+	this.speed = 0;
 	this.nextAttack = 0;
+	
+	this.currentExp = 0;
+	this.expEarned = 0;
+	
 	this.currentCell = cell;
 	
-	this.updateNumbers = function()
+	this.updateNumbers = function(newType)
 	    {
-		    if(this.type == "recruit")
+			var addAtk= 0;
+			var addDef= 0;
+			var addHlt= 0;
+			var addSpd = 0;
+			var addExpEarned = 0;
+			
+		    if(newType == "recruit")
 			{
-				this.defense = 20;
-	            this.health = 100;
-	            this.totalHealth = 100;
-	            this.attack = 40;
+				addDef = 20;
+	            addHlt = 100;
+	            addAtk = 40;
+				addExpEarned = 5;
+				//addSpd;
 	            this.speed = 5;
 			}
-			if(this.type == "knight")
+			if(newType == "Knight")
 			{
-				this.defense = 40;
-	            this.health = 200;
-				this.totalHealth = 200;
-				this.attack = 60;
+				addDef = (this.defense / who.difficultyMod * 1.5);
+	            addHlt = (this.health / who.difficultyMod * 2);
+				addAtk = (this.attack / who.difficultyMod * 1.5);
+				addExpEarned = this.expEarned * 1.2;
+				//addSpd;
 				this.speed = 5;
 			}
-			if(this.type == "archer")
+			if(newType == "Archer")
 			{
-				this.defense = 30;
-	            this.health = 150;
-				this.totalHealth = 150;
-				this.attack = 60;
+				addDef = (this.defense / who.difficultyMod * 1.75);
+	            addHlt = (this.health / who.difficultyMod * 1.6);
+				addAtk = (this.attack / who.difficultyMod * 1.5);
+				addExpEarned = this.expEarned * 1.2;
+				//addSpd;
 				this.speed = 3;
 			}
-			if(this.type == "mage")
+			if(newType == "Mage")
 			{
-				this.defense = 25;
-	            this.health = 125;
-				this.totalHealth = 125;
-				this.attack = 60;
+				addDef = (this.defense / who.difficultyMod * 1.25);
+	            addHlt = (this.health / who.difficultyMod * 1.25);
+				addAtk = (this.attack / who.difficultyMod * 1.75);
+				addExpEarned = this.expEarned * 1.2;
+				//addSpd;
 				this.speed = 4;
 			}
+			
+			this.defense += addDef;
+			this.attack += addAtk;
+			this.health += addHlt;
+			this.totalHealth += addHlt;
+			this.expEarned += addExpEarned;
+			//this.speed += addSpd;
 	    }
 	
 	
@@ -131,25 +184,27 @@ function unit(owner, cell)
 	this.attacked = function(attacker)
 	    {
 		    this.health -= (attacker.attack - this.defense);
-			console.log(attacker.attack, this.defense, (attacker.attack - this.defense));
 	    }
 	
 	this.unitString = "";
 	this.updateString = function() 
 	    {
-			var nameString = "<p>Name: " + this.name + "</p>";
 		    var attackString = "<p>Attack: " + this.attack + "</p>";
 			var defenseString = "<p>Defense: " + this.defense + "</p>";
 			var health = "<p>Health: " + this.health + "/" + this.totalHealth + "</p>";
-			this.unitString = nameString + health + attackString + defenseString;
+			var expString = "<p>" + this.currentExp + " exp</p>";
+			var knightString = "<p>" + this.currentKnight + "</p>";
+			var archerString = "<p>" + this.currentArcher + "</p>";
+			var mageString = "<p>" + this.currentMage + "</p>";
+			this.unitString = health + attackString + defenseString + expString + knightString + archerString + mageString;
 	    }
 		
 	this.modify = function()
 	    {
-		    this.defense *= difficultyMod;
-		    this.health *= difficultyMod;
-		    this.totalHealth *= difficultyMod;
-		    this.attack *= difficultyMod;
+		    this.defense *= who.difficultyMod;
+		    this.health *= who.difficultyMod;
+		    this.totalHealth *= who.difficultyMod;
+		    this.attack *= who.difficultyMod;
 	    }
 }
 
@@ -157,7 +212,7 @@ function mapCell(theCellId)
 {
 	this.type = "inactive";
 	this.isMountain = false;
-	this.isPlayers = false;
+	this.isPlayers = true;
 	this.isOpponents = false;
 	
 	this.unitGroup = [];
@@ -174,19 +229,20 @@ function mapCell(theCellId)
 	this.updateStyleString = function ()
 		{
 			var colorString = "background-color: " + cellColor(this);
-			if (this.unitGroup.length != 0 || this.unitGroup[0] != undefined) 
+			if (this.unitGroup.length != 0 && this.unitGroup[0] != undefined) 
 			{
 				if(this.type != "inactive" || (this.type == "inactive" && this.isPlayers == true))
 				{
 					colorString += "; background-image: linear-gradient(to top right, deepskyblue, deepskyblue 25%, " + cellColor(this) + " 25%, " + cellColor(this) + " 75%, deepskyblue 75%, deepskyblue)";
-					if (playerFighter.currentCell != undefined)
+					if (player.Group.selectedFighter.currentCell != undefined)
 					{
-						if(this.unitGroup[0].currentCell == playerFighter.currentCell)colorString += "; background-image: linear-gradient(to top right, white, white 25%, " + cellColor(this) + " 25%, " + cellColor(this) + " 75%, white 75%, white)";
+						if(this.unitGroup[0].currentCell == player.Group.selectedFighter.currentCell)colorString += "; background-image: linear-gradient(to top right, white, white 25%, " + cellColor(this) + " 25%, " + cellColor(this) + " 75%, white 75%, white)";
 					}
 				}
 				else
 				{
-					if (enemyFighter.currentCell != undefined && this.unitGroup[0].currentCell == enemyFighter.currentCell)
+					colorString += "; background-image: linear-gradient(to top right, #14dcb4, #14dcb4 25%, " + cellColor(this) + " 25%, " + cellColor(this) + " 75%, #14dcb4 75%, #14dcb4)";
+					if (opponent.Group.selectedFighter.currentCell != undefined && this.unitGroup[0].currentCell == opponent.Group.selectedFighter.currentCell)
 					colorString += "; background-image: linear-gradient(to top right, crimson, crimson 25%, " + cellColor(this) + " 25%, " + cellColor(this) + " 75%, crimson 75%, crimson)";
 				}
 				
@@ -194,7 +250,7 @@ function mapCell(theCellId)
 			var visibleString = "";
 			if (this.isVisible == true || tutCont == true) visibleString = "; visibility: visible";
 			var borderString = "";
-			if (this.isSelected == true) borderString = "; border: 3px solid white; height: 47px";
+			if (this.isSelected == true) borderString = "; border: 3px solid white; height: calc(5.7vh - 8px)";
 			this.styleString = " style='" + colorString + visibleString + borderString + "'";
 		}
 	this.updateCellString = function()
@@ -210,7 +266,7 @@ function mapCell(theCellId)
 	    }
 		//onclick='selectSpace(" + this.cellId + ")' 
 		
-	this.start = function(type, ownership) {
+	this.start = function(type, ownership, owner) {
 		this.type = type;
 		this.level = 1;
 		this.isPlayers = ownership;
@@ -218,10 +274,10 @@ function mapCell(theCellId)
 		this.cellInformation = "LVL <span>" + this.level + "</span>";
 		this.updateStyleString();
 		this.updateCellString();
-		if (type == "farm") haveAFarm = true;
-		if (type == "mill") haveAMill = true;
-		if (type == "quarry") haveAQuarry = true;
-		if (type == "mine") haveAMine = true;
+		if (type == "farm") owner.haveAFarm = true;
+		if (type == "mill") owner.haveAMill = true;
+		if (type == "quarry") owner.haveAQuarry = true;
+		if (type == "mine") owner.haveAMine = true;
 	}
 		
 }
@@ -234,31 +290,31 @@ function mapCell(theCellId)
 /**
 BUY AND UPGRADE FUNCTIONS
 */
-function upgrade()
+function upgrade(owner)
 {
 	if(mapArray[selectedSpace].type == "farm")
 	{
-	    var upgradeGoldCost = 10;
-	    var upgradeStoneCost = 30;
-	    var upgradeLumberCost = 30;
+	    var upgradeGoldCost = owner.farmGoldUpgrade;
+	    var upgradeStoneCost = owner.farmStoneUpgrade;
+	    var upgradeLumberCost = owner.farmLumberUpgrade;
 	}	
 	if(mapArray[selectedSpace].type == "mine")
 	{
-	    var upgradeGoldCost = 10;
-	    var upgradeStoneCost = 30;
-	    var upgradeLumberCost = 30;
+	    var upgradeGoldCost = owner.MineGoldUpgrade;
+	    var upgradeStoneCost = owner.MineStoneUpgrade;
+	    var upgradeLumberCost = owner.MineLumberUpgrade;
 	}	
 	if(mapArray[selectedSpace].type == "mill")
 	{
-	    var upgradeGoldCost = 10;
-	    var upgradeStoneCost = 30;
-	    var upgradeLumberCost = 30;
+	    var upgradeGoldCost = owner.LumberMillGoldUpgrade;
+	    var upgradeStoneCost = owner.LumberMillStoneUpgrade;
+	    var upgradeLumberCost = owner.LumberMillLumberUpgrade;
 	}	
 	if(mapArray[selectedSpace].type == "quarry")
 	{
-	    var upgradeGoldCost = 10;
-	    var upgradeStoneCost = 30;
-	    var upgradeLumberCost = 30;
+	    var upgradeGoldCost = owner.QuarryGoldUpgrade;
+	    var upgradeStoneCost = owner.QuarryStoneUpgrade;
+	    var upgradeLumberCost = owner.QuarryLumberUpgrade;
 	}	
 	
 	upgradeGoldCost = upgradeGoldCost * mapArray[selectedSpace].level;
@@ -300,45 +356,45 @@ function upgrade()
 	}
 }
 
-function buyFarm()
+function buyFarm(owner)
 {
-	if(mapArray[selectedSpace] == undefined) return alert('HEY, NO CELL SELECTED');
-	
 	if(mapArray[selectedSpace].type != "inactive") return alert("Can't buy a farm here");
+	if(mapArray[selectedSpace].isPlayers == false) return;
 		
- 	if(player.Gold >= farmGoldCost && player.Lumber >= farmLumberCost && player.Stone >= farmStoneCost)
+ 	if(player.Gold >= owner.farmGoldCost && player.Lumber >= owner.farmLumberCost && player.Stone >= owner.farmStoneCost)
 	{
-		player.Gold -= farmGoldCost;
-		player.Lumber -= farmLumberCost;
-		player.Stone -= farmStoneCost;
+		player.Gold -= owner.farmGoldCost;
+		player.Lumber -= owner.farmLumberCost;
+		player.Stone -= owner.farmStoneCost;
 		player.TotalFood += 3;
 		mapArray[selectedSpace].type = "farm";
 		mapArray[selectedSpace].level = 1;
 		mapArray[selectedSpace].cellInformation = "LVL <span>" + mapArray[selectedSpace].level + "</span>";
-		haveAFarm = true;
+		owner.haveAFarm = true;
 		mapArray[selectedSpace].isPlayers = true;
 		updateMap();
 		update();
 	}
 }
 
-function buyMill()
+function buyMill(owner)
 {
 	if(mapArray[selectedSpace] == undefined) return alert('HEY, NO CELL SELECTED');
 	
 	if(mapArray[selectedSpace].type != "inactive") return alert("Can't buy a Lumber Mill here");
+	if(mapArray[selectedSpace].isPlayers == false) return;
 		
- 	if(player.Gold >= LumberMillGoldCost && player.Lumber >= LumberMillLumberCost && player.Stone >= LumberMillStoneCost)
+ 	if(player.Gold >= owner.LumberMillGoldCost && player.Lumber >= owner.LumberMillLumberCost && player.Stone >= owner.LumberMillStoneCost)
 	{
-		player.Gold -= LumberMillGoldCost;
-		player.Lumber -= LumberMillLumberCost;
-		player.Stone -= LumberMillStoneCost;
+		player.Gold -= owner.LumberMillGoldCost;
+		player.Lumber -= owner.LumberMillLumberCost;
+		player.Stone -= owner.LumberMillStoneCost;
 		player.lumberIncrementer += 1;
 		mapArray[selectedSpace].type = "mill";
 		mapArray[selectedSpace].level = 1;
 		mapArray[selectedSpace].cellInformation = "LVL <span>" + mapArray[selectedSpace].level + "</span>";
-		haveAMill = true;
-		if (haveAQuarry == true) 
+		owner.haveAMill = true;
+		if (owner.haveAQuarry == true) 
 		{
 			document.getElementById("farm-button").style.visibility="visible";
 			document.getElementById("mine-button").style.visibility="visible";
@@ -349,23 +405,24 @@ function buyMill()
 	}
 }
 
-function buyQuarry()
+function buyQuarry(owner)
 {
 	if(mapArray[selectedSpace] == undefined) return alert('HEY, NO CELL SELECTED');
 	
 	if(mapArray[selectedSpace].type != "inactive") return alert("Can't buy a Quarry here");
+	if(mapArray[selectedSpace].isPlayers == false) return;
 		
- 	if(player.Gold >= QuarryGoldCost && player.Lumber >= QuarryLumberCost && player.Stone >= QuarryStoneCost)
+ 	if(player.Gold >= owner.QuarryGoldCost && player.Lumber >= owner.QuarryLumberCost && player.Stone >= owner.QuarryStoneCost)
 	{
-		player.Gold -= QuarryGoldCost;
-		player.Lumber -= QuarryLumberCost;
-		player.Stone -= QuarryStoneCost;
+		player.Gold -= owner.QuarryGoldCost;
+		player.Lumber -= owner.QuarryLumberCost;
+		player.Stone -= owner.QuarryStoneCost;
 		player.stoneIncrementer += 1;
 		mapArray[selectedSpace].type = "quarry";
 		mapArray[selectedSpace].level = 1;
 		mapArray[selectedSpace].cellInformation = "LVL <span>" + mapArray[selectedSpace].level + "</span>";
-		haveAQuarry = true;
-		if (haveAMill == true) 
+		owner.haveAQuarry = true;
+		if (owner.haveAMill == true) 
 		{
 			document.getElementById("farm-button").style.visibility="visible";
 			document.getElementById("mine-button").style.visibility="visible";
@@ -376,52 +433,137 @@ function buyQuarry()
 	}
 }
 
-function buyMine()
+function buyMine(owner)
 {
 	if(mapArray[selectedSpace] == undefined) return alert('HEY, NO CELL SELECTED');
 	
 	if(mapArray[selectedSpace].type != "inactive") return alert("Can't buy a Mine here");
+	if(mapArray[selectedSpace].isPlayers == false) return;
 		
- 	if(player.Gold >= MineGoldCost && player.Lumber >= MineLumberCost && player.Stone >= MineStoneCost)
+ 	if(player.Gold >= owner.MineGoldCost && player.Lumber >= owner.MineLumberCost && player.Stone >= owner.MineStoneCost)
 	{
-		player.Gold -= MineGoldCost;
-		player.Lumber -= MineLumberCost;
-		player.Stone -= MineStoneCost;
+		player.Gold -= owner.MineGoldCost;
+		player.Lumber -= owner.MineLumberCost;
+		player.Stone -= owner.MineStoneCost;
 		player.goldIncrementer += .5;
 		mapArray[selectedSpace].type = "mine";
 		mapArray[selectedSpace].level = 1;
 		mapArray[selectedSpace].cellInformation = "LVL <span>" + mapArray[selectedSpace].level + "</span>";
-		haveAMine = true;
+		owner.haveAMine = true;
 		mapArray[selectedSpace].isPlayers = true;
 		updateMap();
 		update();
 	}
 }
 
-function buyUnit()
+function buyYard(owner)
 {
-	if (mapArray[selectedSpace].type == "inactive") return;
+	if(mapArray[selectedSpace] == undefined) return alert('HEY, NO CELL SELECTED');
+	
+	if(mapArray[selectedSpace].type != "inactive") return alert("Can't buy an Academy here");
+	if(mapArray[selectedSpace].isPlayers == false) return;
+		
+ 	if(player.Gold >= owner.YardGoldCost && player.Lumber >= owner.YardLumberCost && player.Stone >= owner.YardStoneCost)
+	{
+		player.Gold -= owner.YardGoldCost;
+		player.Lumber -= owner.YardLumberCost;
+		player.Stone -= owner.YardStoneCost;
+		player.goldIncrementer += .5;
+		mapArray[selectedSpace].type = "yard";
+		mapArray[selectedSpace].level = 1;
+		mapArray[selectedSpace].cellInformation = "LVL <span>" + mapArray[selectedSpace].level + "</span>";
+		owner.haveAYard = true;
+		mapArray[selectedSpace].isPlayers = true;
+		updateMap();
+		update();
+	}
+}
+
+function buyUnit(owner)
+{
+	if (mapArray[selectedSpace].type == "inactive") return alert("You don't own this space here. Build a structure before buying units.");
+	if (mapArray[selectedSpace].unitGroup.length == 3) return alert("Can't buy a unit here!");
+	if (player.Lumber < player.UnitLumberCost || player.Stone < player.UnitStoneCost || player.Gold < player.UnitGoldCost) return alert("Not enough resources for that!");
 	if (player.UsedFood + 3 > player.TotalFood)
 	{
 	    alert("Not Enough Food To feed him!");
 	    return;
 	}
-	if(mapArray[selectedSpace].unitGroup.length > 0) return alert("Can't buy a unit here!");
-	mapArray[selectedSpace].unitGroup.push(new unit(false, selectedSpace));
+	
+	player.Lumber -= player.UnitLumberCost;
+	player.Stone -= player.UnitStoneCost;
+	player.Gold -= player.UnitGoldCost;
+	
+	mapArray[selectedSpace].unitGroup.push(new unit(false, selectedSpace, player));
 	player.UsedFood += 3;
 	
-	var person = prompt("Enter the units name", "Sir Cadagon");
+	var person = prompt("Enter the units name", "Ender");
 	while(person == null)
 	{
-		person = prompt("Enter the units name", "Sir Cadagon");
+		person = prompt("Enter the units name", "Ender");
 	}
 	
 	
 	var x = mapArray[selectedSpace].unitGroup.length;
-	mapArray[selectedSpace].unitGroup[0].name = person;
-	mapArray[selectedSpace].unitGroup[0].updateString();
-	playerFighter = mapArray[selectedSpace].unitGroup[0];
+	mapArray[selectedSpace].unitGroup[x-1].name = person;
+	mapArray[selectedSpace].unitGroup[x-1].updateNumbers("recruit");
+	mapArray[selectedSpace].unitGroup[x-1].updateString();
+	player.Group.selectedFighterGroup = mapArray[selectedSpace].unitGroup;
+	player.Group.selectedFighter = player.Group.selectedFighterGroup[0];
 	updateMap();
+}
+
+function upgradeUnit(owner, newType, baseType,level)
+{
+	var modUpgradeLumber = Math.round(owner.UnitLumberUpgrade * (1.8)^level);
+	var modUpgradeStone = Math.round(owner.UnitStoneUpgrade * (1.8)^level);
+	var modUpgradeGold = Math.round(owner.UnitGoldUpgrade * (2.0)^level);
+	var modUpgradeExp = Math.round(owner.UnitExpCost * (2.0)^level);
+	var typeExp;
+	if (baseType == 'knight') typeExp = owner.KnightExp;
+	if (baseType == 'archer') typeExp = owner.ArcherExp;
+	if (baseType == 'mage') typeExp = owner.MageExp;
+	
+	if (owner.Lumber < modUpgradeLumber || owner.Stone < modUpgradeStone || owner.Gold < modUpgradeGold) return alert("Not enough resources for that!");
+	if (owner.Group.selectedFighter.currentExp + typeExp < modUpgradeExp) return alert("Not enough experience. Kill more or train more.");
+	
+	owner.Lumber -= modUpgradeLumber;
+	owner.Stone -= modUpgradeStone;
+	owner.Gold -= modUpgradeGold;
+	
+	if (modUpgradeExp <= owner.Group.selectedFighter.currentExp) owner.Group.selectedFighter.currentExp -= modUpgradeExp;
+	else
+	{
+		modUpgradeExp -= owner.Group.selectedFighter.currentExp;
+		if(baseType == 'knight') owner.KnightExp -= modUpgradeExp;
+		if(baseType == 'archer') owner.ArcherExp -= modUpgradeExp;
+		if(baseType == 'mage') owner.MageExp -= modUpgradeExp;
+		owner.Group.selectedFighter.currentExp = 0;
+	}
+	
+	if (baseType == 'knight')
+	{
+		owner.Group.selectedFighter.currentKnight = newType;
+		owner.Group.selectedFighter.updateNumbers(newType);
+		owner.Group.selectedFighter.updateString();
+		owner.Group.selectedFighter.knightlvl++;
+	}
+	if (baseType == 'archer')
+	{
+		owner.Group.selectedFighter.currentArcher = newType;
+		owner.Group.selectedFighter.updateNumbers(newType);
+		owner.Group.selectedFighter.updateString();
+		owner.Group.selectedFighter.archerlvl++;
+	}
+	if (baseType == 'mage')
+	{
+		owner.Group.selectedFighter.currentMage = newType;
+		owner.Group.selectedFighter.updateNumbers(newType);
+		owner.Group.selectedFighter.updateString();
+		owner.Group.selectedFighter.magelvl++;
+	}
+	updateMap();
+	
 }
 /*********************
 **********************
@@ -434,7 +576,7 @@ function createMap()
 	for (i = 0; i < 100; i++)
 	{
 		var tmpFirst = Math.floor(i/10);
-		var x;
+		var x = 'Z';
 		switch(tmpFirst){
 			case 0: x = 'A'; break;
 			case 1: x = 'B'; break;
@@ -456,9 +598,9 @@ function createMap()
 
 function selectSpace(id)
 {
-	var parsedId = id.toString();
-	var firstChar = parsedId[0];
-	var secondChar = parsedId[1];
+	selectedId = id.toString();
+	var firstChar = selectedId[0];
+	var secondChar = selectedId[1];
 	var x;
 		switch (firstChar){
 		case 'A': x = ""; break;
@@ -474,11 +616,18 @@ function selectSpace(id)
 		default: break;
 		}
 	var y = (x + secondChar);
-	selectedId = parsedId;
 	selectedSpace = y;
-	if(mapArray[selectedSpace].unitGroup[0] != undefined && mapArray[selectedSpace].unitGroup[0].isEnemy == false) playerFighter = mapArray[selectedSpace].unitGroup[0];
-	if(mapArray[selectedSpace].unitGroup[0] != undefined && mapArray[selectedSpace].unitGroup[0].isEnemy == true) enemyFighter = mapArray[selectedSpace].unitGroup[0];
-	console.log(enemyFighter);
+	if(mapArray[selectedSpace].unitGroup[0] != undefined && mapArray[selectedSpace].unitGroup[0].isEnemy == false) 
+	{
+		player.Group.selectedFighterGroup = mapArray[selectedSpace].unitGroup;
+		player.Group.selectedFighter = player.Group.selectedFighterGroup[0];
+		console.log(player.Group);
+	}
+	if(mapArray[selectedSpace].unitGroup[0] != undefined && mapArray[selectedSpace].unitGroup[0].isEnemy == true)
+	{
+		opponent.Group.selectedFighterGroup = mapArray[selectedSpace].unitGroup;
+		opponent.Group.selectedFighter = opponent.Group.selectedFighterGroup[0];
+	}
 	updateMap();
 }
 
@@ -498,7 +647,7 @@ function cellColor(cell)
 	
 	if (cell.type == "mill") return  "saddlebrown";
 	
-	if (cell.type == "milYard") return  "green";
+	if (cell.type == "yard") return  "green";
 	
 	if (cell.type == "mine") return  "slategray";
 	
@@ -524,7 +673,7 @@ function updateIncrement()
 	if (player.Gold > player.goldMax) player.Gold = player.goldMax;
 }
 
-function updateCosts()
+function updateCosts(owner)
 {
 	if (mapArray[selectedSpace].type == "inactive") 
 	{
@@ -539,9 +688,9 @@ function updateCosts()
 	
 	if(mapArray[selectedSpace].type == "farm")
 	{
-	    var upgradeGoldCost = 10;
-	    var upgradeStoneCost = 30;
-	    var upgradeLumberCost = 30;
+	    var upgradeGoldCost = owner.farmGoldUpgrade;
+	    var upgradeStoneCost = owner.farmStoneUpgrade;
+	    var upgradeLumberCost = owner.farmLumberUpgrade;
 		
 		
 		document.getElementById("buy-button-block").style.display="none";
@@ -555,9 +704,9 @@ function updateCosts()
 	}	
 	if(mapArray[selectedSpace].type == "mine")
 	{
-	    var upgradeGoldCost = 10;
-	    var upgradeStoneCost = 30;
-	    var upgradeLumberCost = 30;
+	    var upgradeGoldCost = owner.MineGoldUpgrade;
+	    var upgradeStoneCost = owner.MineStoneUpgrade;
+	    var upgradeLumberCost = owner.MineLumberUpgrade;
 		
 		document.getElementById("buy-button-block").style.display="none";
 		document.getElementById("upgrade-button-block").style.display="flex";
@@ -570,9 +719,9 @@ function updateCosts()
 	}	
 	if(mapArray[selectedSpace].type == "mill")
 	{
-	    var upgradeGoldCost = 10;
-	    var upgradeStoneCost = 30;
-	    var upgradeLumberCost = 30;
+	    var upgradeGoldCost = owner.LumberMillGoldUpgrade;
+	    var upgradeStoneCost = owner.LumberMillStoneUpgrade;
+	    var upgradeLumberCost = owner.LumberMillLumberUpgrade;
 		
 		document.getElementById("buy-button-block").style.display="none";
 		document.getElementById("upgrade-button-block").style.display="flex";
@@ -585,9 +734,9 @@ function updateCosts()
 	}	
 	if(mapArray[selectedSpace].type == "quarry")
 	{
-	    var upgradeGoldCost = 10;
-	    var upgradeStoneCost = 30;
-	    var upgradeLumberCost = 30;
+	    var upgradeGoldCost = owner.QuarryGoldUpgrade;
+	    var upgradeStoneCost = owner.QuarryStoneUpgrade;
+	    var upgradeLumberCost = owner.QuarryLumberUpgrade;
 		
 		document.getElementById("buy-button-block").style.display="none";
 		document.getElementById("upgrade-button-block").style.display="flex";
@@ -622,12 +771,15 @@ function updateCosts()
 		document.getElementById("buy-farm-cost").style.backgroundColor="gray";
 		document.getElementById("buy-farm").style.border="1px solid white";
 		document.getElementById("buy-farm-cost").style.border="1px solid white";
+		document.getElementById("buy-farm-cost").style.borderTop="0px";
 		document.getElementById("buy-mine").style.backgroundColor="gray";
 		document.getElementById("buy-mine-cost").style.backgroundColor="gray";
 		document.getElementById("buy-lumber-mill").style.backgroundColor="gray";
 		document.getElementById("buy-mill-cost").style.backgroundColor="gray";
 		document.getElementById("buy-quarry").style.backgroundColor="gray";
 		document.getElementById("buy-quarry-cost").style.backgroundColor="gray";
+		document.getElementById("buy-yard").style.backgroundColor="gray";
+		document.getElementById("buy-yard-cost").style.backgroundColor="gray";
 	}
 	
 	if (mapArray[selectedSpace].isPlayers == true)
@@ -636,13 +788,22 @@ function updateCosts()
 		document.getElementById("buy-farm-cost").style.backgroundColor="#FFFF33";
 		document.getElementById("buy-farm").style.border="1px solid black";
 		document.getElementById("buy-farm-cost").style.border="1px solid black";
+		document.getElementById("buy-farm-cost").style.borderTop="0px";
 		document.getElementById("buy-mine").style.backgroundColor="slategray";
 		document.getElementById("buy-mine-cost").style.backgroundColor="slategray";
 		document.getElementById("buy-lumber-mill").style.backgroundColor="saddlebrown";
 		document.getElementById("buy-mill-cost").style.backgroundColor="saddlebrown";
 		document.getElementById("buy-quarry").style.backgroundColor="purple";
 		document.getElementById("buy-quarry-cost").style.backgroundColor="purple";
+		document.getElementById("buy-yard").style.backgroundColor="forestgreen";
+		document.getElementById("buy-yard-cost").style.backgroundColor="forestgreen";
 	}
+	
+	
+	document.getElementById("buy-recruit-cost").innerHTML = "Lumber: " + player.UnitLumberCost + "<br>" + "Stone: " + player.UnitStoneCost + "<br>" + "Gold: " + player.UnitGoldCost;
+	document.getElementById("buy-knight-cost").innerHTML = "Lumber: " + player.UnitLumberCost + "<br>" + "Stone: " + player.UnitStoneCost + "<br>" + "Gold: " + player.UnitGoldCost;
+	document.getElementById("buy-archer-cost").innerHTML = "Lumber: " + player.UnitLumberCost + "<br>" + "Stone: " + player.UnitStoneCost + "<br>" + "Gold: " + player.UnitGoldCost;
+	document.getElementById("buy-mage-cost").innerHTML = "Lumber: " + player.UnitLumberCost + "<br>" + "Stone: " + player.UnitStoneCost + "<br>" + "Gold: " + player.UnitGoldCost;
 	
 	document.getElementById("upgrade-farm-cost").innerHTML = "Lumber: " + upgradeLumberCost + "<br>" + "Stone: " + upgradeStoneCost + "<br>" + "Gold: " + upgradeGoldCost;
 	document.getElementById("upgrade-mill-cost").innerHTML = "Lumber: " + upgradeLumberCost + "<br>" + "Stone: " + upgradeStoneCost + "<br>" + "Gold: " + upgradeGoldCost;
@@ -660,20 +821,8 @@ function updateMap()
 			if (i == selectedSpace) 
 			{
 				mapArray[i].isSelected = true;
-				if(mapArray[i].unitGroup[0] != undefined)
-                {
-					if(mapArray[i].unitGroup[0].isEnemy == false)
-					{
-					    document.getElementById('player-unit').innerHTML = mapArray[i].unitGroup[0].unitString;
-					    document.getElementById('player-unit').style.visibility="visible";
-						document.getElementById('battle-button').style.visibility="visible";
-						document.getElementById('move-button').style.visibility="visible";
-					}
-					else{
-						document.getElementById('enemy-unit').innerHTML = mapArray[i].unitGroup[0].unitString;
-					    document.getElementById('enemy-unit').style.visibility="visible";
-					}
-				}
+				updateCards(i);
+				
 			}
 			else 
 			{
@@ -682,14 +831,107 @@ function updateMap()
 			mapArray[i].updateCellString();
 			mapString = mapString + mapArray[i].cellString;
 	}
-	updateCosts();
+	updateCosts(player);
 	return document.getElementById('game-table').innerHTML =  mapString;	
+}
+
+function updateCards(i)
+{
+	if(mapArray[i].isPlayers == true)
+	{
+		if(player.Group.selectedFighterGroup.length != 0)
+		{
+			document.getElementById('player-unit').innerHTML = player.Group.selectedFighterGroup[0].unitString;
+			document.getElementById('player-card-1').innerHTML= player.Group.selectedFighterGroup[0].name;
+			if (opponent.Group.selectedFighterGroup.length != 0)
+			{
+				document.getElementById('enemy-unit').innerHTML = opponent.Group.selectedFighterGroup[0].unitString;
+				document.getElementById('enemy-card-1').innerHTML= opponent.Group.selectedFighterGroup[0].name;
+			}
+			else
+			{
+				document.getElementById('enemy-card-1').style.color="crimson";
+			}
+			document.getElementById('player-card-1').style.color="white";
+			if(player.Group.selectedFighterGroup.length > 2)
+			{
+				document.getElementById('player-card-2').innerHTML= player.Group.selectedFighterGroup[1].name;
+				document.getElementById('player-card-3').innerHTML= player.Group.selectedFighterGroup[2].name;
+				document.getElementById('player-card-2').style.color="white";
+				document.getElementById('player-card-3').style.color="white";
+			}
+			else if(player.Group.selectedFighterGroup.length > 1)
+			{
+				document.getElementById('player-card-2').innerHTML= player.Group.selectedFighterGroup[1].name;
+				document.getElementById('player-card-2').style.color="white";
+				document.getElementById('player-card-3').style.color="dodgerblue";
+			}
+			else
+			{
+				document.getElementById('player-card-2').style.color="dodgerblue";
+				document.getElementById('player-card-3').style.color="dodgerblue";
+			}
+		}
+		else
+		{
+			document.getElementById('player-unit').innerHTML = "";
+			document.getElementById('player-card-1').style.color="dodgerblue";
+			document.getElementById('player-card-2').style.color="dodgerblue";
+			document.getElementById('player-card-3').style.color="dodgerblue";
+		}
+	}	
+	else //if(mapArray[i].isOpponents == true)
+	{
+		if(opponent.Group.selectedFighterGroup.length != 0)
+		{
+			document.getElementById('enemy-unit').innerHTML = opponent.Group.selectedFighterGroup[0].unitString;
+			document.getElementById('enemy-card-1').innerHTML= opponent.Group.selectedFighterGroup[0].name;
+			if(player.Group.selectedFighterGroup.length != 0)
+			{
+				document.getElementById('player-unit').innerHTML = player.Group.selectedFighterGroup[0].unitString;
+				document.getElementById('player-card-1').innerHTML= player.Group.selectedFighterGroup[0].name;
+			}
+			else
+			{
+				document.getElementById('player-card-1').style.color="dodgerblue";
+			}
+			document.getElementById('enemy-card-1').style.color="white";
+			document.getElementById('enemy-card-1').style.width="calc(60% - 2px)";
+			document.getElementById('enemy-card-2').style.width="calc(20% - 2px)";
+			document.getElementById('enemy-card-3').style.width="calc(19% - 2px)";
+			if(opponent.Group.selectedFighterGroup.length > 2)
+			{
+				document.getElementById('enemy-card-2').innerHTML= opponent.Group.selectedFighterGroup[1].name;
+				document.getElementById('enemy-card-3').innerHTML= opponent.Group.selectedFighterGroup[2].name;
+				document.getElementById('enemy-card-2').style.color="white";
+				document.getElementById('enemy-card-3').style.color="white";
+			}
+			else if(opponent.Group.selectedFighterGroup.length > 1)
+			{
+				document.getElementById('enemy-card-2').innerHTML= opponent.Group.selectedFighterGroup[1].name;
+				document.getElementById('enemy-card-2').style.color="white";
+				document.getElementById('enemy-card-3').style.color="crimson";
+			}
+			else
+			{
+				document.getElementById('enemy-card-2').style.color="crimson";
+				document.getElementById('enemy-card-3').style.color="crimson";
+			}
+		}
+		else
+		{
+			document.getElementById('enemy-unit').innerHTML = "";
+			document.getElementById('enemy-card-1').style.color="crimson";
+			document.getElementById('enemy-card-2').style.color="crimson";
+			document.getElementById('enemy-card-3').style.color="crimson";
+		}
+	}
 }
 
 function update()
 {
 	if(tutCont != true) updateIncrement();
-	updateCosts();
+	updateCosts(player);
 	
     var lumberPer = player.Lumber / player.lumberMax;
 	var stonePer = player.Stone / player.stoneMax;
@@ -734,34 +976,36 @@ function update()
 	updateMove();
 }
 
-function initializePrices()
+function initializePrices(owner)
 {
-	document.getElementById("buy-farm-cost").innerHTML = "Lumber: " + farmLumberCost + "<br>" + "Stone: " + farmStoneCost + "<br>" + "Gold: " + farmGoldCost;
-	document.getElementById("buy-mill-cost").innerHTML = "Lumber: " + LumberMillLumberCost + "<br>" + "Stone: " + LumberMillStoneCost + "<br>" + "Gold: " + LumberMillGoldCost;
-	document.getElementById("buy-mine-cost").innerHTML = "Lumber: " + MineLumberCost + "<br>" + "Stone: " + MineStoneCost + "<br>" + "Gold: " + MineGoldCost;
-	document.getElementById("buy-quarry-cost").innerHTML = "Lumber: " + QuarryLumberCost + "<br>" + "Stone: " + QuarryStoneCost + "<br>" + "Gold: " + QuarryGoldCost;
+	document.getElementById("buy-farm-cost").innerHTML = "Lumber: " + owner.farmLumberCost + "<br>" + "Stone: " + owner.farmStoneCost + "<br>" + "Gold: " + owner.farmGoldCost;
+	document.getElementById("buy-mill-cost").innerHTML = "Lumber: " + owner.LumberMillLumberCost + "<br>" + "Stone: " + owner.LumberMillStoneCost + "<br>" + "Gold: " + owner.LumberMillGoldCost;
+	document.getElementById("buy-mine-cost").innerHTML = "Lumber: " + owner.MineLumberCost + "<br>" + "Stone: " + owner.MineStoneCost + "<br>" + "Gold: " + owner.MineGoldCost;
+	document.getElementById("buy-quarry-cost").innerHTML = "Lumber: " + owner.QuarryLumberCost + "<br>" + "Stone: " + owner.QuarryStoneCost + "<br>" + "Gold: " + owner.QuarryGoldCost;
+	document.getElementById("buy-yard-cost").innerHTML = "Lumber: " + owner.YardLumberCost + "<br>" + "Stone: " + owner.YardStoneCost + "<br>" + "Gold: " + owner.YardGoldCost;
 	
-	document.getElementById("upgrade-farm-cost").innerHTML = "Lumber: " + farmLumberUpgrade + "<br>" + "Stone: " + farmStoneUpgrade + "<br>" + "Gold: " + farmGoldUpgrade;
-	document.getElementById("upgrade-mill-cost").innerHTML = "Lumber: " + LumberMillLumberUpgrade + "<br>" + "Stone: " + LumberMillStoneUpgrade + "<br>" + "Gold: " + LumberMillGoldUpgrade;
-	document.getElementById("upgrade-mine-cost").innerHTML = "Lumber: " + MineLumberUpgrade + "<br>" + "Stone: " + MineStoneUpgrade + "<br>" + "Gold: " + MineGoldUpgrade;
-	document.getElementById("upgrade-quarry-cost").innerHTML = "Lumber: " + QuarryLumberUpgrade + "<br>" + "Stone: " + QuarryStoneUpgrade + "<br>" + "Gold: " + QuarryGoldUpgrade;
+	document.getElementById("upgrade-farm-cost").innerHTML = "Lumber: " + owner.farmLumberUpgrade + "<br>" + "Stone: " + owner.farmStoneUpgrade + "<br>" + "Gold: " + owner.farmGoldUpgrade;
+	document.getElementById("upgrade-mill-cost").innerHTML = "Lumber: " + owner.LumberMillLumberUpgrade + "<br>" + "Stone: " + owner.LumberMillStoneUpgrade + "<br>" + "Gold: " + owner.LumberMillGoldUpgrade;
+	document.getElementById("upgrade-mine-cost").innerHTML = "Lumber: " + owner.MineLumberUpgrade + "<br>" + "Stone: " + owner.MineStoneUpgrade + "<br>" + "Gold: " + owner.MineGoldUpgrade;
+	document.getElementById("upgrade-quarry-cost").innerHTML = "Lumber: " + owner.QuarryLumberUpgrade + "<br>" + "Stone: " + owner.QuarryStoneUpgrade + "<br>" + "Gold: " + owner.QuarryGoldUpgrade;
 }
 
 function initialize()
 {
-	player = new resources(50, 50, 10, 3, 0, 5, 0, 0, 0);
+	player = new resources(50, 50, 10, 3, 0, 5, 0, 0, 0, 1); // resources(lum, sto, gold, totFood, useFood, exp, knightExp, archerExp, mageExp, difMod)
 	player.lumberIncrementer = 1;
 	player.stoneIncrementer = 1;
 	player.goldIncrementer = .5;
-	opponent = new resources(50,50,10,3,0,5,0,0,0);
+	opponent = new resources(50,50,10,3,0,5,0,0,0, .9); 
+	neutral = new resources(50,50,10,3,0,5,0,0,0, .9);
 	opponent.lumberIncrementer = 1;
 	opponent.stoneIncrementer = 1;
 	opponent.goldIncrementer = .5;
 	update();
-	initializePrices();
+	initializePrices(player);
 	updateMap();
 	tutorial(1);
-	
+	//setUpStartingSpaces();
 	//beginGame();
 	
 }
@@ -801,67 +1045,119 @@ function battle(playerUnit, enemyUnit)
 	
 	if (playerUnit.speed - x == playerUnit.speed)
 	{		
-        mapArray[enemyUnit.currentCell].unitGroup[0].attacked(playerUnit);
-		mapArray[enemyUnit.currentCell].unitGroup[0].updateString();
-		var fightMessage = playerFighter.name + " just attacked! He did " + (playerFighter.attack - enemyFighter.defense) + " damage.";
+        enemyUnit.attacked(playerUnit);
+		enemyUnit.updateString();
+		var fightMessage = playerUnit.name + " just attacked! He did " + (playerUnit.attack - enemyUnit.defense) + " damage.";
 		message(fightMessage, "palegreen");
-		document.getElementById('player-unit').innerHTML = mapArray[playerUnit.currentCell].unitGroup[0].unitString;
-		document.getElementById('enemy-unit').innerHTML = mapArray[enemyUnit.currentCell].unitGroup[0].unitString;
+		if(opponent.Group.selectedFighter == enemyUnit) document.getElementById('enemy-unit').innerHTML = enemyUnit.unitString;
 	}
 	if (enemyUnit.speed - y == enemyUnit.speed) 
 	{
-		mapArray[playerUnit.currentCell].unitGroup[0].attacked(enemyUnit);
-	    mapArray[playerUnit.currentCell].unitGroup[0].updateString();
-		var fightMessage = enemyFighter.name + " just attacked! He did " + (enemyFighter.attack - playerFighter.defense) + " damage.";
+		playerUnit.attacked(enemyUnit);
+	    playerUnit.updateString();
+		var fightMessage = enemyUnit.name + " just attacked! He did " + (enemyUnit.attack - playerUnit.defense) + " damage.";
 		message(fightMessage, "indianred");
-		document.getElementById('player-unit').innerHTML = mapArray[playerUnit.currentCell].unitGroup[0].unitString;
-		document.getElementById('enemy-unit').innerHTML = mapArray[enemyUnit.currentCell].unitGroup[0].unitString;
+		if(player.Group.selectedFighter == playerUnit) document.getElementById('player-unit').innerHTML = playerUnit.unitString;
 	}
-	mapArray[playerUnit.currentCell].unitGroup[0].updateString();
-	mapArray[enemyUnit.currentCell].unitGroup[0].updateString();
+	playerUnit.updateString();
+	enemyUnit.updateString();
 	
 	battleTimeCount++;
 	
-	if (mapArray[playerUnit.currentCell].unitGroup[0].health <= 0) 
+	if (playerUnit.health <= 0) 
 	{
-		message("Oh no! " + mapArray[playerUnit.currentCell].unitGroup[0].name + " was killed in battle!", "indianred");
-		mapArray[playerUnit.currentCell].unitGroup = [];
+		message("Oh no! " + playerUnit.name + " was killed in battle!", "indianred");
+		enemyUnit.currentExp += playerUnit.expEarned;
+		enemyUnit.updateString();
+		if(player.Group.battlingFighterGroup.length == 1)
+		{
+			player.Group.battlingFighterGroup.pop();
+			player.Group.battlingFighterGroup = [];
+			mapArray[playerUnit.currentCell].isPlayers = true;
+		}
+		if(player.Group.battlingFighterGroup.length == 2)
+		{
+			player.Group.battlingFighterGroup[0] =  player.Group.battlingFighterGroup[1];
+			player.Group.battlingFighterGroup.pop();
+			player.Group.selectedFighter = player.Group.selectedFighterGroup[0];
+			
+		}
+		if(player.Group.battlingFighterGroup.length == 3)
+		{
+			player.Group.battlingFighterGroup[0] =  player.Group.battlingFighterGroup[1];
+			player.Group.battlingFighterGroup[1] = player.Group.battlingFighterGroup[2];
+			player.Group.battlingFighterGroup.pop();
+			player.Group.selectedFighter = player.Group.selectedFighterGroup[0];
+		}
+		player.Group.selectedFighterGroup = mapArray[playerUnit.currentCell].unitGroup;
+		mapArray[playerUnit.currentCell].updateCellString();
+		
 		document.getElementById('player-unit').innerHTML = "";
-		document.getElementById('player-unit').style.visibility="hidden";
 		battling = false;
 		battleTimeCount = 0;
+		selectSpace(selectedId);
+		updateCards(playerUnit.currentCell);
 		updateMap();
 	}
-	if (mapArray[enemyUnit.currentCell].unitGroup[0].health <= 0) 
+	if (enemyUnit.health <= 0) 
 	{
-		message("Hoorah! " + mapArray[enemyUnit.currentCell].unitGroup[0].name + " was killed in battle!", "palegreen");
-		mapArray[enemyUnit.currentCell].unitGroup = [];
-		mapArray[enemyUnit.currentCell].isPlayers = true;
+		message("Hoorah! " + enemyUnit.name + " was killed in battle!", "palegreen");
+		playerUnit.currentExp += enemyUnit.expEarned;
+		playerUnit.updateString();
+		if(mapArray[enemyUnit.currentCell].unitGroup.length == 1)
+		{
+			mapArray[enemyUnit.currentCell].unitGroup.pop();
+			mapArray[enemyUnit.currentCell].unitGroup = [];
+			mapArray[enemyUnit.currentCell].isPlayers = true;
+		}
+		if(mapArray[enemyUnit.currentCell].unitGroup.length == 2)
+		{
+			mapArray[enemyUnit.currentCell].unitGroup[0] =  mapArray[enemyUnit.currentCell].unitGroup[1];
+			mapArray[enemyUnit.currentCell].unitGroup.pop();
+			enemyFighter = opponent.Group.selectedFighterGroup[0];
+		}
+		if(mapArray[enemyUnit.currentCell].unitGroup.length == 3)
+		{
+			mapArray[enemyUnit.currentCell].unitGroup[0] =  mapArray[enemyUnit.currentCell].unitGroup[1];
+			mapArray[enemyUnit.currentCell].unitGroup[1] = mapArray[enemyUnit.currentCell].unitGroup[2];
+			mapArray[enemyUnit.currentCell].unitGroup.pop();
+			enemyFighter = opponent.Group.selectedFighterGroup[0];
+		}
+		
+		opponent.Group.selectedFighterGroup = mapArray[enemyUnit.currentCell].unitGroup;
 		mapArray[enemyUnit.currentCell].updateCellString();
 		document.getElementById('enemy-unit').innerHTML = "";
-		document.getElementById('enemy-unit').style.visibility="hidden";
 		battling = false
 		battleTimeCount = 0;
+		selectSpace(selectedId);
+		updateCards(enemyUnit.currentCell);
 		updateMap();
 	}
 }
 
 function updateBattles()
 {
+	
 	if(battling == true)
 	{
-	    battle(playerFighter, enemyFighter);
+	    battle(player.Group.battlingFighter, opponent.Group.battlingFighter);
 	}
 }
 
 function startBattle()
 {
-	if(playerFighter != undefined && enemyFighter != undefined)
+	if(player.Group.selectedFighter != undefined && opponent.Group.selectedFighter != undefined)
 	{
-	    if ((playerFighter.currentCell == enemyFighter.currentCell - 1) || (playerFighter.currentCell == enemyFighter.currentCell - 10) || (playerFighter.currentCell == enemyFighter.currentCell + 1) || (playerFighter.currentCell == enemyFighter.currentCell + 10))
+	    if ((player.Group.selectedFighter.currentCell == opponent.Group.selectedFighter.currentCell - 1) || (player.Group.selectedFighter.currentCell == opponent.Group.selectedFighter.currentCell - 10) || (player.Group.selectedFighter.currentCell == opponent.Group.selectedFighter.currentCell + 1) || (player.Group.selectedFighter.currentCell == opponent.Group.selectedFighter.currentCell + 10))
 	    {
 		    battling = true;
 			moving = false;
+			player.Group.battlingFighter = player.Group.selectedFighter;
+			player.Group.battlingFighterGroup = player.Group.selectedFighterGroup;
+			opponent.Group.battlingFighter = opponent.Group.selectedFighter;
+			opponent.Group.battlingFighterGroup = opponent.Group.selectedFighterGroup;
+			
+			console.log(player.Group.selectedFighterGroup);
 	    }
 		else alert("Enemy is too far away");
 	}
@@ -870,25 +1166,25 @@ function startBattle()
 
 function moveUnit(newSpace)
 {
-	var start = playerFighter.currentCell;
+	var start = player.Group.selectedFighter.currentCell;
 	if (start > newSpace)
 	{
 		if (Math.floor(start / 10) - Math.floor(newSpace / 10) > 0)
 		{
-			mapArray[start].unitGroup = [];
+			mapArray[start].unitGroup.pop();
 			mapArray[start].updateCellString();
 			start -= 10;
-			mapArray[start].unitGroup.push(playerFighter);
-			playerFighter.currentCell = start;
+			mapArray[start].unitGroup.push(player.Group.selectedFighter);
+			player.Group.selectedFighter.currentCell = start;
 			mapArray[start].updateCellString();
 		}
 		else if (start - newSpace > 0)
 		{
-			mapArray[start].unitGroup = [];
+			mapArray[start].unitGroup.pop();
 			mapArray[start].updateCellString();
 			start -= 1;
-			mapArray[start].unitGroup.push(playerFighter);
-			playerFighter.currentCell = start;
+			mapArray[start].unitGroup.push(player.Group.selectedFighter);
+			player.Group.selectedFighter.currentCell = start;
 			mapArray[start].updateCellString();
 		}
 	}
@@ -896,21 +1192,21 @@ function moveUnit(newSpace)
 	{
 		if (Math.floor(newSpace / 10) - Math.floor(start / 10) > 0)
 		{
-			mapArray[start].unitGroup = [];
+			mapArray[start].unitGroup.pop();
 			mapArray[start].updateCellString();
 			start = Number(start) + 10;
 			console.log(start);
-			mapArray[start].unitGroup.push(playerFighter);
-			playerFighter.currentCell = start;
+			mapArray[start].unitGroup.push(player.Group.selectedFighter);
+			player.Group.selectedFighter.currentCell = start;
 			mapArray[start].updateCellString();
 		}
 		else if (newSpace - start > 0)
 		{
-			mapArray[start].unitGroup = [];
+			mapArray[start].unitGroup.pop();
 			mapArray[start].updateCellString();
 			start = Number(start) + 1;
-			mapArray[start].unitGroup.push(playerFighter);
-			playerFighter.currentCell = start;
+			mapArray[start].unitGroup.push(player.Group.selectedFighter);
+			player.Group.selectedFighter.currentCell = start;
 			mapArray[start].updateCellString();
 		}
 	}
@@ -932,7 +1228,7 @@ function updateMove()
 
 function startMove()
 {
-	if (playerFighter != undefined)
+	if (player.Group.selectedFighter != undefined)
 	{
 		if (mapArray[selectedSpace].isPlayers == true)
 		{
@@ -968,30 +1264,46 @@ function tooltip(input)
 
 function setUpStartingSpaces()
 {
-	mapArray[0].start("farm", true);
-	mapArray[1].start("mill", true);
-	mapArray[10].start("quarry", true);
-	mapArray[11].start("mine", true);
+	mapArray[0].start("farm", true, player);
+	mapArray[1].start("mill", true, player);
+	mapArray[10].start("quarry", true, player);
+	mapArray[11].start("mine", true, player);
 	
-	mapArray[99].start("farm", false);
-	mapArray[98].start("mill", false);
-	mapArray[89].start("quarry", false);
-	mapArray[88].start("mine", false);
+	mapArray[99].start("farm", false, opponent);
+	mapArray[98].start("mill", false, opponent);
+	mapArray[89].start("quarry", false, opponent);
+	mapArray[88].start("mine", false, opponent);
 	
 	
-	mapArray[2].unitGroup.push(new unit(true, 2));
+	mapArray[2].unitGroup.push(new unit(true, 2, neutral));
 	mapArray[2].unitGroup[0].name = "Bandit";
 	mapArray[2].unitGroup[0].type ="recruit";
-	mapArray[2].unitGroup[0].updateNumbers();
+	mapArray[2].unitGroup[0].updateNumbers("recruit");
 	mapArray[2].unitGroup[0].modify();
 	mapArray[2].unitGroup[0].updateString();
+	mapArray[2].isPlayers = false;
 	
-	mapArray[12].unitGroup.push(new unit(true, 12));
+	mapArray[12].unitGroup.push(new unit(true, 12, neutral));
 	mapArray[12].unitGroup[0].name = "Bandit";
 	mapArray[12].unitGroup[0].type ="recruit";
-	mapArray[12].unitGroup[0].updateNumbers();
+	mapArray[12].unitGroup[0].updateNumbers("recruit");
 	mapArray[12].unitGroup[0].modify();
 	mapArray[12].unitGroup[0].updateString();
+	mapArray[12].isPlayers = false;
+	
+	mapArray[21].unitGroup.push(new unit(true, 21, neutral));
+	mapArray[21].unitGroup[0].name = "Bandit";
+	mapArray[21].unitGroup[0].type ="recruit";
+	mapArray[21].unitGroup[0].updateNumbers("recruit");
+	mapArray[21].unitGroup[0].modify();
+	mapArray[21].unitGroup[0].updateString();
+	mapArray[21].isPlayers = false;
+	mapArray[21].unitGroup.push(new unit(true, 21, neutral));
+	mapArray[21].unitGroup[1].name = "Wizard";
+	mapArray[21].unitGroup[1].type ="recruit";
+	mapArray[21].unitGroup[1].updateNumbers("recruit");
+	mapArray[21].unitGroup[1].modify();
+	mapArray[21].unitGroup[1].updateString();
 	
 	
 }
@@ -1005,6 +1317,8 @@ function message(messageString, color)
 
 function tutorial(tutNum)
 {
+	mapArray[selectedSpace].isPlayers = true;
+	updateMap();
 	if(tutNum == 1) tutorialMessage("Let's get started grabbing some land!"           , ""                 , "" , tutNum);
 	if(tutNum == 2)
 	{
@@ -1027,8 +1341,8 @@ function tutorial(tutNum)
 		tutorialMessage(messageString               , "resource-table"   , "buy-button-block" , tutNum);
 	}
 	if(tutNum == 4) tutorialMessage("Build Units to capture more land!"               , "buy-unit-block"   , "resource-table", tutNum);
-	if(tutNum == 5) tutorialMessage("Capture the board before your enemy does to Win!", "game-table"       , "buy-unit-block", tutNum);
-	if(tutNum == 6) tutorialMessage("Good Luck!"                                      , ""                 , "game-table", tutNum);	
+	if(tutNum == 5) tutorialMessage("Capture the board before your enemy does to Win!", "game-table-holder"       , "buy-unit-block", tutNum);
+	if(tutNum == 6) tutorialMessage("Good Luck!"                                      , ""                 , "game-table-holder", tutNum);	
 	if(tutNum == 7) tutorialMessage("", "game-table", "" , tutNum);
 }
 
@@ -1043,22 +1357,22 @@ function tutorialMessage(message, highlightedID, previousID, tutNum)
 	}
 	if(tutNum == 2)
 	{
-		document.getElementById('tutorial-block').style.top="25vh";
+		document.getElementById('tutorial-block').style.top="26vh";
 		document.getElementById('tutorial-block').style.left="60vw";
 	}
 	if(tutNum == 3)
 	{
-		document.getElementById('tutorial-block').style.top="13vh";
+		document.getElementById('tutorial-block').style.top="14vh";
 		document.getElementById('tutorial-block').style.left="35vw";
 	}
 	if(tutNum == 4)
 	{
-		document.getElementById('tutorial-block').style.top="40vh";
+		document.getElementById('tutorial-block').style.top="39vh";
 		document.getElementById('tutorial-block').style.left="61vw";
 	}
 	if(tutNum == 5)
 	{
-		document.getElementById('tutorial-block').style.top="12vh";
+		document.getElementById('tutorial-block').style.top="14vh";
 		document.getElementById('tutorial-block').style.left="56vw";
 		document.getElementById(highlightedID).style.border="1px solid white";
 	}
@@ -1079,6 +1393,7 @@ function tutorialMessage(message, highlightedID, previousID, tutNum)
 		document.getElementById('tutorial-text').style.display="none";
 		document.getElementById('tutorial-button').style.display="none";
 		document.getElementById('mask').style.display="none";
+		mapArray[selectedSpace],isPlayers = false;
 		tutCont = false;
 		setUpStartingSpaces();
 		updateMap();
@@ -1090,4 +1405,99 @@ function tutorialMessage(message, highlightedID, previousID, tutNum)
 	document.getElementById("tutorial-button").setAttribute("onclick", clickString);
 }
 
+function switchCard(unitNum, owner)
+{
+	if(owner == player)
+	{
+		if(owner.Group.selectedFighterGroup.length > unitNum)
+		{
+			document.getElementById('player-unit').innerHTML = player.Group.selectedFighterGroup[unitNum].unitString;
+			if(unitNum == 0)
+			{
+				document.getElementById('player-card-1').style.borderBottom="0px";
+				document.getElementById('player-card-1').style.paddingBottom="1px";
+				document.getElementById('player-card-2').style.borderBottom="1px solid white";
+				document.getElementById('player-card-2').style.paddingBottom="0px";
+				document.getElementById('player-card-3').style.borderBottom="1px solid white";
+				document.getElementById('player-card-3').style.paddingBottom="0px";
+				
+				document.getElementById('player-card-1').style.width="calc(60% - 2px)";
+				document.getElementById('player-card-2').style.width="calc(20% - 2px)";
+				document.getElementById('player-card-3').style.width="calc(19% - 2px)";
+			}
+			else if(unitNum == 1)
+			{
+				document.getElementById('player-card-2').style.borderBottom="0px";
+				document.getElementById('player-card-2').style.paddingBottom="1px";
+				document.getElementById('player-card-1').style.borderBottom="1px solid white";
+				document.getElementById('player-card-1').style.paddingBottom="0px";
+				document.getElementById('player-card-3').style.borderBottom="1px solid white";
+				document.getElementById('player-card-3').style.paddingBottom="0px";
+				
+				document.getElementById('player-card-1').style.width="calc(20% - 2px)";
+				document.getElementById('player-card-2').style.width="calc(60% - 2px)";
+				document.getElementById('player-card-3').style.width="calc(19% - 2px)";
+			}
+			else if (unitNum == 2)
+			{	
+				document.getElementById('player-card-3').style.borderBottom="0px";
+				document.getElementById('player-card-3').style.paddingBottom="1px";
+				document.getElementById('player-card-1').style.borderBottom=" solid white1px";
+				document.getElementById('player-card-1').style.paddingBottom="0px";
+				document.getElementById('player-card-2').style.borderBottom="1px solid white";
+				document.getElementById('player-card-2').style.paddingBottom="0px";
+		
+				document.getElementById('player-card-1').style.width="calc(19% - 2px)";
+				document.getElementById('player-card-2').style.width="calc(20% - 2px)";
+				document.getElementById('player-card-3').style.width="calc(60% - 2px)";
+			}
+		}
+	}
+	else if(owner == opponent)
+	{
+		if(opponent.Group.selectedFighterGroup.length > unitNum)
+		{
+			document.getElementById('enemy-unit').innerHTML = opponent.Group.selectedFighterGroup[unitNum].unitString;
+			if(unitNum == 0)
+			{
+				document.getElementById('enemy-card-1').style.borderBottom="0px";
+				document.getElementById('enemy-card-1').style.paddingBottom="1px";
+				document.getElementById('enemy-card-2').style.borderBottom="1px solid white";
+				document.getElementById('enemy-card-2').style.paddingBottom="0px";
+				document.getElementById('enemy-card-3').style.borderBottom="1px solid white";
+				document.getElementById('enemy-card-3').style.paddingBottom="0px";
+				
+				document.getElementById('enemy-card-1').style.width="calc(60% - 2px)";
+				document.getElementById('enemy-card-2').style.width="calc(20% - 2px)";
+				document.getElementById('enemy-card-3').style.width="calc(19% - 2px)";
+			}
+			else if(unitNum == 1)
+			{
+				document.getElementById('enemy-card-2').style.borderBottom="0px";
+				document.getElementById('enemy-card-2').style.paddingBottom="1px";
+				document.getElementById('enemy-card-1').style.borderBottom="1px solid white";
+				document.getElementById('enemy-card-1').style.paddingBottom="0px";
+				document.getElementById('enemy-card-3').style.borderBottom="1px solid white";
+				document.getElementById('enemy-card-3').style.paddingBottom="0px";
+				
+				document.getElementById('enemy-card-1').style.width="calc(20% - 2px)";
+				document.getElementById('enemy-card-2').style.width="calc(60% - 2px)";
+				document.getElementById('enemy-card-3').style.width="calc(19% - 2px)";
+			}
+			else if (unitNum == 2)
+			{	
+				document.getElementById('enemy-card-3').style.borderBottom="0px";
+				document.getElementById('enemy-card-3').style.paddingBottom="1px";
+				document.getElementById('enemy-card-1').style.borderBottom=" solid white1px";
+				document.getElementById('enemy-card-1').style.paddingBottom="0px";
+				document.getElementById('enemy-card-2').style.borderBottom="1px solid white";
+				document.getElementById('enemy-card-2').style.paddingBottom="0px";
+		
+				document.getElementById('enemy-card-1').style.width="calc(19% - 2px)";
+				document.getElementById('enemy-card-2').style.width="calc(20% - 2px)";
+				document.getElementById('enemy-card-3').style.width="calc(60% - 2px)";
+			}
+		}
+	}
+}
 
